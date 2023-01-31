@@ -1,10 +1,6 @@
-use crate::{Error, Deserialize};
+use crate::{Error, model::{CrtShEntry}};
 use std::collections::HashSet;
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct CrtShEntry {
-    pub name_value: String,
-}
 
 pub async fn get_request(target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
     let endpoint = format!("https://crt.sh/?q=%25.{target_domain}&output=json");

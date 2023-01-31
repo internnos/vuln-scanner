@@ -2,11 +2,10 @@ use serde::Deserialize;
 
 mod error;
 mod subdomains;
+mod model;
 
 use error::Error;
 use subdomains::{get_request, postprocess_request};
-
-
 
 
 #[tokio::main]
