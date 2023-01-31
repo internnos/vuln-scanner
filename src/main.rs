@@ -1,11 +1,19 @@
-use reqwest::Error;
 use serde::Deserialize;
 use std::collections::HashSet;
+use thiserror::Error;
 
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CrtShEntry {
     pub name_value: String,
+}
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("Usage: tricoder <kerkour.com>")]
+    CliUsage,
+    #[error("Reqwest Error")]
+    ReqwestError(#[from] reqwest::Error)
 }
 
 async fn get_request(target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
@@ -46,7 +54,6 @@ async fn main() -> Result<(), Error> {
     let target_domain = "kerkour.com";
     let json = get_request(target_domain).await?;
     let result = postprocess_request(json, target_domain);
-    
     println!("{:?}", result);
     
     Ok(())
