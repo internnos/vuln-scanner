@@ -1,5 +1,5 @@
 use crate::{Error, model::{CrtShEntry, Subdomain}};
-use std::{collections::HashSet, time::Duration};
+use std::{collections::HashSet};
 use reqwest::blocking::get;
 
 use trust_dns_resolver::{
