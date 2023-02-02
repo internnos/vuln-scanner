@@ -18,6 +18,7 @@ pub fn get_request(target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
     // {'issuer_ca_id': 180753, 'issuer_name': 'C=US, O=Google Trust Services LLC, CN=GTS CA 1P5', 'common_name': '*.kerkour.com', 'name_value': '*.kerkour.com\nkerkour.com', 'id': 8479263334, 'entry_timestamp': '2023-01-23T04:06:27.34', 'not_before': '2023-01-23T03:06:26', 'not_after': '2023-04-23T03:06:25', 'serial_number': '6b6fd1b09d2cd76a0ee5dfd5fc6c8e90'}
     // Ok(entries)
     let endpoint = format!("https://crt.sh/?q=%25.{target_domain}&output=json");
+    // TODO: use keep alive connection pooling using Client as described https://docs.rs/reqwest/latest/reqwest/blocking/
     let entries = get(endpoint)?;
     let response: Vec<CrtShEntry> = entries.json()?;
     Ok(response)
