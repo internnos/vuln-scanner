@@ -1,13 +1,15 @@
 use crate::Deserialize;
 
+#[derive(Debug)]
 pub struct Subdomain {
-    domain: String,
-    open_ports: Vec<Port>
+    pub domain: String,
+    pub open_ports: Vec<Port>
 }
 
+#[derive(Debug)]
 pub struct Port {
-    port: u16,
-    is_open: bool
+    pub port: u16,
+    pub is_open: bool
 }
 
 #[derive(Debug, Deserialize, Clone)]
