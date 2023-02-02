@@ -26,7 +26,7 @@ pub fn get_request(target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
 }
 
 
-pub fn postprocess_request(json_response: Vec<CrtShEntry>, target_domain: &str) -> Result<Vec<Subdomain>, Error> {
+pub fn process_request(json_response: Vec<CrtShEntry>, target_domain: &str) -> Result<Vec<Subdomain>, Error> {
     let mut subdomains:HashSet<String> = json_response
     .iter()
     .flat_map(|entry| {
