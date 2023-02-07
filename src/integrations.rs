@@ -10,11 +10,7 @@ use subdomains::{get_request, process_request};
 
 use crate::ports::scan_ports;
 
-use rayon::prelude::*;
-
-
-
-fn main() -> Result<(), Error> {
+fn run_multithread(){
     let client = reqwest::blocking::Client::new();
 
     let pool = rayon::ThreadPoolBuilder::new()
@@ -30,10 +26,8 @@ fn main() -> Result<(), Error> {
         .collect();
 
         println!("{:?}", result);
-
     });
-
-    
-    
-    Ok(())
 }
+
+
+

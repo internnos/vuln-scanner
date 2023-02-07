@@ -5,5 +5,7 @@ pub enum Error {
     #[error("Usage: tricoder <kerkour.com>")]
     CliUsage,
     #[error("Reqwest Error")]
-    ReqwestError(#[from] reqwest::Error)
+    ReqwestError(#[from] reqwest::Error),
+    #[error("Rayon Error")]
+    ThreadPoolError(#[from] rayon::ThreadPoolBuildError)
 }

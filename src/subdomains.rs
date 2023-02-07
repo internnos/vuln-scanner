@@ -1,13 +1,12 @@
 use crate::{Error, model::{CrtShEntry, Subdomain}};
 use std::{collections::HashSet};
-use reqwest::blocking::get;
 
 use trust_dns_resolver::{
     config::{ResolverConfig, ResolverOpts},
     Resolver,
 };
 
-pub fn get_request(target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
+pub fn get_request(http_client: &reqwest::blocking::Client, target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
     // response would be in the following format
     // [
     //     {'issuer_ca_id': 157938, 'issuer_name': 'C=US, O="Cloudflare, Inc.", CN=Cloudflare Inc ECC CA-3', 'common_name': 'kerkour.com', 'name_value': 'kerkour.com', 'id': 8491193860, 'entry_timestamp': '2023-01-25T02:58:20.746', 'not_before': '2023-01-25T00:00:00', 'not_after': '2024-01-25T23:59:59', 'serial_number': '0314749c7e5ad6c3814b4dd0d9c4df9a'},
@@ -17,12 +16,13 @@ pub fn get_request(target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
     // however, there can be multiple value in "name_value" field which will be separated by "\n" token
     // {'issuer_ca_id': 180753, 'issuer_name': 'C=US, O=Google Trust Services LLC, CN=GTS CA 1P5', 'common_name': '*.kerkour.com', 'name_value': '*.kerkour.com\nkerkour.com', 'id': 8479263334, 'entry_timestamp': '2023-01-23T04:06:27.34', 'not_before': '2023-01-23T03:06:26', 'not_after': '2023-04-23T03:06:25', 'serial_number': '6b6fd1b09d2cd76a0ee5dfd5fc6c8e90'}
     // Ok(entries)
+
     let endpoint = format!("https://crt.sh/?q=%25.{target_domain}&output=json");
     // TODO: use keep alive connection pooling using Client as described https://docs.rs/reqwest/latest/reqwest/blocking/
-    let entries = get(endpoint)?;
-    let response: Vec<CrtShEntry> = entries.json()?;
+    let entries = http_client.get(endpoint).send().expect("Error");
+    let response: Vec<CrtShEntry> = entries.json().expect("Error");
     Ok(response)
-    
+
 }
 
 
