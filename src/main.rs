@@ -12,28 +12,22 @@ use crate::ports::scan_ports;
 
 use rayon::prelude::*;
 
+use std::time::Duration;
+use std::time::Instant;
 
 
-fn main() -> Result<(), Error> {
-    let client = reqwest::blocking::Client::new();
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let target_domain = "kerkour.com";
+    let http_timeout = Duration::from_secs(10);
+    let client = reqwest::Client::new();
+    let http_client = reqwest::Client::builder().timeout(http_timeout).build();
 
-    let pool = rayon::ThreadPoolBuilder::new()
-    .num_threads(256)
-    .build()?;
+    let ports_concurrency = 200;
+    let subdomains_concurrency = 100;
+    let scan_start = Instant::now();
 
-    pool.install(|| {
-        let target_domain = "kerkour.com";
-        let response = get_request(&client, target_domain).unwrap();
-        let result:Vec<model::Subdomain> = process_request(response, target_domain).unwrap()
-        .into_par_iter()
-        .map(|subdomain| scan_ports(subdomain))
-        .collect();
-
-        println!("{:?}", result);
-
-    });
-
-    
-    
+    let response = get_request(&client, target_domain).await?;
+    let subdomains = process_request(response, target_domain).await?;
     Ok(())
 }

@@ -1,12 +1,14 @@
 use crate::{Error, model::{CrtShEntry, Subdomain}};
-use std::{collections::HashSet};
+use std::{collections::HashSet, time::Duration};
+use futures::StreamExt;
 
 use trust_dns_resolver::{
     config::{ResolverConfig, ResolverOpts},
-    Resolver,
+    name_server::{GenericConnection, GenericConnectionProvider, TokioRuntime},
+    AsyncResolver, proto::rr::domain,
 };
 
-pub fn get_request(http_client: &reqwest::blocking::Client, target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
+pub async fn get_request(http_client: &reqwest::Client, target_domain: &str) -> Result<Vec<CrtShEntry>, Error> {
     // response would be in the following format
     // [
     //     {'issuer_ca_id': 157938, 'issuer_name': 'C=US, O="Cloudflare, Inc.", CN=Cloudflare Inc ECC CA-3', 'common_name': 'kerkour.com', 'name_value': 'kerkour.com', 'id': 8491193860, 'entry_timestamp': '2023-01-25T02:58:20.746', 'not_before': '2023-01-25T00:00:00', 'not_after': '2024-01-25T23:59:59', 'serial_number': '0314749c7e5ad6c3814b4dd0d9c4df9a'},
@@ -19,16 +21,15 @@ pub fn get_request(http_client: &reqwest::blocking::Client, target_domain: &str)
 
     let endpoint = format!("https://crt.sh/?q=%25.{target_domain}&output=json");
     // TODO: use keep alive connection pooling using Client as described https://docs.rs/reqwest/latest/reqwest/blocking/
-    let entries = http_client.get(endpoint).send().expect("Error");
-    let response: Vec<CrtShEntry> = entries.json().expect("Error");
+    let response = http_client.get(endpoint).send().await?.json().await?;
     Ok(response)
 
 }
 
 
-pub fn process_request(json_response: Vec<CrtShEntry>, target_domain: &str) -> Result<Vec<Subdomain>, Error> {
+pub async fn process_request(json_response: Vec<CrtShEntry>, target_domain: &str) -> Result<Vec<Subdomain>, Error> {
     let mut subdomains:HashSet<String> = json_response
-    .iter()
+    .into_iter()
     .flat_map(|entry| {
         entry
         .name_value
@@ -42,21 +43,48 @@ pub fn process_request(json_response: Vec<CrtShEntry>, target_domain: &str) -> R
     subdomains.insert(target_domain.to_string());
     
     let subdomains: Vec<Subdomain> = subdomains
-    .iter()
+    .into_iter()
     .map(|domain| {
         Subdomain {
             domain: domain.to_string(),
             open_ports: Vec::new()
         }
     })
-    .filter(resolves)
     .collect();
+
+
+
+    let subdomains: Vec<Subdomain> = futures::stream::iter(subdomains)
+    .map(|subdomain| async move {
+        let is_resolvable = resolves(&subdomain).await;
+        if is_resolvable {
+            Subdomain {
+                domain: subdomain.domain,
+                open_ports: Vec::new()
+            }
+            // print!("{} is resolvable)", subdomain.domain);
+        } else {
+            subdomain
+        }
+    })
+    .buffer_unordered(100)
+    .collect()
+    .await;
     Ok(subdomains)
+
+
 
 }
 
 
-pub fn resolves(domain: &Subdomain) -> bool {
-    let dns_resolver = Resolver::new(ResolverConfig::default(), ResolverOpts::default()).expect("subdomain resolver: building DNS client");
-    dns_resolver.lookup_ip(domain.domain.as_str()).is_ok()
+pub async fn resolves(domain: &Subdomain) -> bool {
+    let mut dns_resolver_opts = ResolverOpts::default();
+    dns_resolver_opts.timeout = Duration::from_secs(4);
+
+    let dns_resolver = AsyncResolver::tokio(
+        ResolverConfig::default(),
+        dns_resolver_opts,
+    )
+    .expect("subdomain resolver: building DNS client");
+    dns_resolver.lookup_ip(domain.domain.as_str()).await.is_ok()
 }
